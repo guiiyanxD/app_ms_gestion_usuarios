@@ -7,7 +7,7 @@ module.exports = function (api) {
         moduleName: '@env',
         path: '.env',
         safe: true,
-        allowUndefined: false,
+        allowUndefined: true,
       }],
     ],
   };

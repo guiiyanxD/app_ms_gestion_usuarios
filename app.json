@@ -29,7 +29,21 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#4338ca",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f75e000e-ece9-41a5-9470-3d0d8ffcd21d"
+      }
+    },
+    "owner": "willdev18"
   }
 }
