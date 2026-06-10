@@ -17,8 +17,8 @@
         "buildType": "apk"
       },
       "env": {
-        "GRAPHQL_URL": "https://viralshopbo.com/graphql",
-        "REST_BASE_URL": "https://ms-bi-automation.onrender.com/api/v1"
+        "EXPO_PUBLIC_GRAPHQL_URL": "https://viralshopbo.com/graphql",
+        "EXPO_PUBLIC_REST_BASE_URL": "https://ms-bi-automation.onrender.com/api/v1"
       }
     },
     "production": {
