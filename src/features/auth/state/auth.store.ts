@@ -1,10 +1,13 @@
 import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
 import { tokenStorage } from '../../../core/auth/storage/token.storage';
 import { AuthRepositoryImpl } from '../data/repositories/auth.repository.impl';
 import { Session } from '../domain/models/session.model';
 import { LoginUseCase } from '../domain/use-cases/login.use-case';
 import { PushTokenRepositoryImpl } from '../../notifications/data/repositories/push-token.repository.impl';
 import { DeactivateTokenUseCase } from '../../notifications/domain/use-cases/deactivate-token.use-case';
+
+const PUSH_TOKEN_KEY = 'gestion.push-token';
 
 interface AuthState {
   session: Session | null;
@@ -49,7 +52,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     const stored = await tokenStorage.get();
     if (stored?.userId) {
       try {
-        await deactivateTokenUC.execute(stored.userId);
+        const pushToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
+        if (pushToken) {
+          const userId = stored.restUserId ?? stored.userId;
+          await deactivateTokenUC.execute(userId, pushToken);
+        }
       } catch {
         // no bloquear el logout si falla la desactivación
       }

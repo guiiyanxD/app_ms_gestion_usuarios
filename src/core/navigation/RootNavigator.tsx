@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useAuthStore } from '../../features/auth/state/auth.store';
 import { useNetworkStatus } from '../../shared/hooks/useNetworkStatus';
 import { useNotifications } from '../../shared/hooks/useNotifications';
+import { navigationRef } from './navigation-ref';
 import NetworkBanner from '../../shared/ui/NetworkBanner';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
@@ -12,9 +13,10 @@ export default function RootNavigator() {
   const { session, restoreSession } = useAuthStore();
   const { isOffline } = useNetworkStatus();
 
-  // Pide permisos y registra el token cuando hay sesión activa.
-  // userId null → el hook no hace nada (usuario no autenticado).
-  useNotifications(session?.userId ?? null);
+  // Usa restUserId para el registro del token en el microservicio REST.
+  // Fallback a userId (GraphQL) si restUserId no está disponible.
+  const notifUserId = session?.restUserId ?? session?.userId ?? null;
+  useNotifications(notifUserId);
 
   useEffect(() => {
     restoreSession();
@@ -22,7 +24,7 @@ export default function RootNavigator() {
 
   return (
     <View style={styles.root}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         {session ? <AppNavigator /> : <AuthNavigator />}
       </NavigationContainer>
       <NetworkBanner visible={isOffline} />

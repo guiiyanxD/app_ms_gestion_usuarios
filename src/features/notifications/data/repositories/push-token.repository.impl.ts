@@ -1,18 +1,29 @@
-import { springAxiosClient } from '../../../../core/api/spring-axios.client';
+import * as SecureStore from 'expo-secure-store';
+import { axiosClient } from '../../../../core/api/axios.client';
+import '../../../../core/api/axios.interceptor';
 import { PushToken } from '../../domain/models/push-token.model';
 import { PushTokenRepository } from '../../domain/repositories/push-token.repository';
 
+const PUSH_TOKEN_KEY = 'gestion.push-token';
+
 export class PushTokenRepositoryImpl extends PushTokenRepository {
   async register(pushToken: PushToken): Promise<void> {
-    await springAxiosClient.post(`/usuarios/${pushToken.userId}/push-token`, {
+    await axiosClient.post(`/users/${pushToken.userId}/push-token`, {
       token: pushToken.token,
-      platform: pushToken.platform,
     });
+    await SecureStore.setItemAsync(PUSH_TOKEN_KEY, pushToken.token);
     console.log('[PushToken] Registrado en backend:', pushToken.token);
   }
 
-  async deactivate(userId: string): Promise<void> {
-    await springAxiosClient.delete(`/usuarios/${userId}/push-token`);
+  async deactivate(userId: string, token: string): Promise<void> {
+    try {
+      await axiosClient.delete(`/users/${userId}/push-token`, {
+        data: { token },
+      });
+    } catch {
+      // 404 es aceptable — token ya eliminado o no registrado
+    }
+    await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);
     console.log('[PushToken] Desactivado para userId:', userId);
   }
 }
