@@ -94,9 +94,23 @@ export function useNotifications(userId: string | null) {
   useEffect(() => {
     if (!userId) return;
 
+    console.log('[Push] isExpoGo:', isExpoGo(), '| Notifications disponible:', !!Notifications);
+    console.log('[Push] userId para registro:', userId);
+
     getExpoPushToken().then((token) => {
-      if (!token) return;
-      registerTokenUC.execute({ userId, token });
+      if (!token) {
+        console.log('[Push] No se obtuvo token — flujo detenido');
+        return;
+      }
+      console.log('[Push] Enviando token al backend para userId:', userId);
+      registerTokenUC.execute({ userId, token }).catch((err: unknown) => {
+        const axiosErr = err as { response?: { status?: number; data?: unknown } };
+        if (axiosErr?.response) {
+          console.log('[PushToken] Error HTTP', axiosErr.response.status, JSON.stringify(axiosErr.response.data));
+        } else {
+          console.log('[PushToken] Error de red:', err instanceof Error ? err.message : String(err));
+        }
+      });
     });
   }, [userId]);
 

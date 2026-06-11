@@ -8,7 +8,7 @@ const PUSH_TOKEN_KEY = 'gestion.push-token';
 
 export class PushTokenRepositoryImpl extends PushTokenRepository {
   async register(pushToken: PushToken): Promise<void> {
-    await axiosClient.post(`/users/${pushToken.userId}/push-token`, {
+    await axiosClient.post(`/usuarios/${pushToken.userId}/push-token`, {
       token: pushToken.token,
     });
     await SecureStore.setItemAsync(PUSH_TOKEN_KEY, pushToken.token);
@@ -17,7 +17,7 @@ export class PushTokenRepositoryImpl extends PushTokenRepository {
 
   async deactivate(userId: string, token: string): Promise<void> {
     try {
-      await axiosClient.delete(`/users/${userId}/push-token`, {
+      await axiosClient.delete(`/usuarios/${userId}/push-token`, {
         data: { token },
       });
     } catch {
