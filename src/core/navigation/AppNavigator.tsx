@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import SolicitudesStack from './SolicitudesStack';
 import CrearSolicitudScreen from '../../features/solicitudes/presentation/screens/CrearSolicitudScreen';
+import MisSolicitudesStack from './MisSolicitudesStack';
 import BusquedaScreen from '../../features/busqueda/presentation/screens/BusquedaScreen';
 import ProfileScreen from '../../features/auth/presentation/screens/ProfileScreen';
 import { AppTabsParams } from './navigation.types';
@@ -14,13 +15,15 @@ const Tab = createBottomTabNavigator<AppTabsParams>();
 const TAB_ICONS: Record<string, string> = {
   SolicitudesTab: '📋',
   NuevaSolicitudTab: '➕',
+  MisSolicitudesTab: '🔧',
   BusquedaTab: '🔍',
   PerfilTab: '👤',
 };
 
 export default function AppNavigator() {
-  const { canCreateRequest } = useSession();
+  const { canCreateRequest, canTomarResponsabilidad } = useSession();
   const canCreate = canCreateRequest();
+  const canTomar = canTomarResponsabilidad();
 
   return (
     <Tab.Navigator
@@ -47,6 +50,14 @@ export default function AppNavigator() {
           name="NuevaSolicitudTab"
           component={CrearSolicitudScreen}
           options={{ title: 'Nueva solicitud', tabBarLabel: 'Nueva' }}
+        />
+      )}
+
+      {canTomar && (
+        <Tab.Screen
+          name="MisSolicitudesTab"
+          component={MisSolicitudesStack}
+          options={{ headerShown: false, tabBarLabel: 'En proceso' }}
         />
       )}
 

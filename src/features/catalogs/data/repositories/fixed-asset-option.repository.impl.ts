@@ -1,23 +1,36 @@
-import { gql } from '@apollo/client';
-import { apolloClient } from '../../../../core/api/apollo.client';
+import { axiosClient } from '../../../../core/api/axios.client';
+import '../../../../core/api/axios.interceptor';
 import { FixedAssetOption } from '../../domain/models/catalog.model';
 
-const GET_ALL_FIXED_ASSETS = gql`
-  query GetAllFixedAssets($offset: Int!, $limit: Int!) {
-    getAllFixedAssets(offset: $offset, limit: $limit) {
-      content { id name category location }
-    }
-  }
-`;
+interface ActivoRestDto {
+  readonly id: string;
+  readonly codigo: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly location?: string;
+  readonly category?: string;
+  readonly status?: string;
+  readonly areaName?: string;
+  readonly categoryName?: string;
+}
+
+interface ActivosResponse {
+  readonly success: boolean;
+  readonly data: ActivoRestDto[];
+}
+
+function toFixedAssetOption(dto: ActivoRestDto): FixedAssetOption {
+  return {
+    id: dto.id,
+    codigo: dto.codigo,
+    name: dto.name,
+    category: dto.categoryName ?? dto.category ?? '',
+    location: dto.areaName ?? dto.location ?? '',
+  };
+}
 
 export async function fetchFixedAssetOptions(): Promise<FixedAssetOption[]> {
-  const { data } = await apolloClient.query<{
-    getAllFixedAssets: { content: FixedAssetOption[] };
-  }>({
-    query: GET_ALL_FIXED_ASSETS,
-    variables: { offset: 0, limit: 200 },
-    fetchPolicy: 'cache-first',
-  });
-  if (!data) return [];
-  return data.getAllFixedAssets.content;
+  const { data } = await axiosClient.get<ActivosResponse>('/activos');
+  if (!data.success) return [];
+  return data.data.map(toFixedAssetOption);
 }

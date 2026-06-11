@@ -1,9 +1,10 @@
 import { gql } from '@apollo/client';
 import { apolloClient } from '../../../../core/api/apollo.client';
+import { axiosClient } from '../../../../core/api/axios.client';
 import { Credentials } from '../../domain/models/credentials.model';
 import { Session } from '../../domain/models/session.model';
 import { AuthRepository } from '../../domain/repositories/auth.repository';
-import { LoginResponseDto } from '../dto/auth.dto';
+import { CatalogoUsuariosResponseDto, LoginResponseDto } from '../dto/auth.dto';
 import { toSession } from '../mappers/session.mapper';
 
 const LOGIN_MUTATION = gql`
@@ -25,6 +26,21 @@ export class AuthRepositoryImpl extends AuthRepository {
       variables: { email: credentials.email, password: credentials.password },
     });
     if (!data?.login) throw new Error('Respuesta inválida del servidor');
-    return toSession(data.login);
+
+    const dto = data.login;
+    const restUserId = await this.resolveRestUserId(dto.token, dto.email);
+    return toSession(dto, restUserId);
+  }
+
+  private async resolveRestUserId(token: string, email: string): Promise<string | null> {
+    try {
+      const res = await axiosClient.get<CatalogoUsuariosResponseDto>('/catalogo/usuarios', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const match = res.data.data.find((u) => u.email === email);
+      return match?.id ?? null;
+    } catch {
+      return null;
+    }
   }
 }

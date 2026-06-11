@@ -10,7 +10,7 @@ function decodeRole(token: string): UserRole {
   }
 }
 
-export function toSession(dto: LoginResponseDto): Session {
+export function toSession(dto: LoginResponseDto, restUserId: string | null): Session {
   return {
     userId: dto.id,
     token: dto.token,
@@ -18,5 +18,6 @@ export function toSession(dto: LoginResponseDto): Session {
     lastName: dto.lastName,
     email: dto.email,
     role: decodeRole(dto.token),
+    restUserId,
   };
 }

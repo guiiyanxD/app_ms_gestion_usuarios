@@ -18,7 +18,8 @@
       },
       "env": {
         "EXPO_PUBLIC_GRAPHQL_URL": "https://viralshopbo.com/graphql",
-        "EXPO_PUBLIC_REST_BASE_URL": "https://ms-bi-automation.onrender.com/api/v1"
+        "EXPO_PUBLIC_REST_BASE_URL": "https://ms-bi-automation.onrender.com/api/v1",
+        "EXPO_PUBLIC_SPRING_REST_BASE_URL": "https://viralshopbo.com/api/v1"
       }
     },
     "production": {

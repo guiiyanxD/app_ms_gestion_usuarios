@@ -2,7 +2,7 @@ import { useAuthStore } from '../../features/auth/state/auth.store';
 import { UserRole } from '../../features/auth/domain/models/session.model';
 
 const ROLES_CAN_CREATE: UserRole[] = ['OPERADOR', 'SUPERADMIN', 'GERENTE'];
-const ROLES_CAN_TAKE: UserRole[] = ['TECNICO', 'SUPERADMIN'];
+const ROLES_CAN_TAKE: UserRole[] = ['TECNICO', 'SUPERADMIN', 'GERENTE'];
 
 export function useSession() {
   const session = useAuthStore((s) => s.session);

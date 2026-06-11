@@ -1,9 +1,9 @@
-import { gql } from '@apollo/client';
-import { apolloClient } from '../../../../core/api/apollo.client';
 import { axiosClient } from '../../../../core/api/axios.client';
 import '../../../../core/api/axios.interceptor';
 import {
+  CompletarInput,
   CreateMaintenanceRequestInput,
+  DiagnosticarInput,
   MaintenanceRequest,
   MaintenanceRequestStatus,
   PaginatedResult,
@@ -11,135 +11,82 @@ import {
 } from '../../domain/models/maintenance-request.model';
 import { MaintenanceRequestRepository } from '../../domain/repositories/maintenance-request.repository';
 import {
+  CompletarRestDto,
   CreateSolicitudRestDto,
-  MaintenanceRequestDto,
-  UpdateEstadoRestDto,
+  DiagnosticarRestDto,
+  SolicitudDetailResponseDto,
+  SolicitudListResponseDto,
+  TomarResponsabilidadRestDto,
 } from '../dto/maintenance-request.dto';
-import { toMaintenanceRequest } from '../mappers/maintenance-request.mapper';
+import {
+  STATUS_TO_ESTADO,
+  toMaintenanceRequestFromDetail,
+  toMaintenanceRequestFromList,
+} from '../mappers/maintenance-request.mapper';
 
-const REQUEST_FRAGMENT = `
-  id title description status createdBy createdAt updatedAt
-  fixedAsset { id name category location status }
-  statusChangeLog { fromStatus toStatus }
-`;
+const PAGE_SIZE_DEFAULT = 20;
 
-const GET_BY_STATUS = gql`
-  query GetMaintenanceRequestsByStatus($status: MaintenanceRequestStatusEnum!, $offset: Int!, $limit: Int!) {
-    getMaintenanceRequestsByStatus(status: $status, offset: $offset, limit: $limit) {
-      content { ${REQUEST_FRAGMENT} }
-      currentPage totalPages totalElements hasNext hasPrevious
-    }
-  }
-`;
-
-const GET_BY_CREATED_BY = gql`
-  query GetMaintenanceRequestsByCreatedBy($createdBy: String!, $offset: Int!, $limit: Int!) {
-    getMaintenanceRequestsByCreatedBy(createdBy: $createdBy, offset: $offset, limit: $limit) {
-      content { ${REQUEST_FRAGMENT} }
-      currentPage totalPages totalElements hasNext hasPrevious
-    }
-  }
-`;
-
-const GET_BY_ID = gql`
-  query GetMaintenanceRequestById($id: ID!) {
-    getMaintenanceRequestById(id: $id) { ${REQUEST_FRAGMENT} }
-  }
-`;
-
-const CREATE_MUTATION = gql`
-  mutation CreateMaintenanceRequest($fixedAssetId: ID!, $title: String!, $description: String!) {
-    createMaintenanceRequest(fixedAssetId: $fixedAssetId, title: $title, description: $description) {
-      id title description status createdBy createdAt
-      fixedAsset { id name category location status }
-    }
-  }
-`;
-
-const CREATE_MAINTENANCE = gql`
-  mutation CreateMaintenance($maintenanceRequestId: ID!, $type: MaintenanceTypeEnum!, $description: String!, $userId: ID!, $imageUrl: String) {
-    createMaintenance(maintenanceRequestId: $maintenanceRequestId, type: $type, description: $description, userId: $userId, imageUrl: $imageUrl) {
-      id type description
-      maintenanceRequest { id title status }
-    }
-  }
-`;
-
-const UPDATE_STATUS = gql`
-  mutation UpdateMaintenanceRequestStatus($id: ID!, $newStatus: MaintenanceRequestStatusEnum!) {
-    updateMaintenanceRequestStatus(id: $id, newStatus: $newStatus) { id status }
-  }
-`;
-
-interface PaginatedResponse {
-  content: MaintenanceRequestDto[];
-  currentPage: number;
-  totalPages: number;
-  totalElements: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
+function toPaginatedResult<T>(
+  data: T[],
+  meta: { total: number; page: number; pageSize: number; totalPages: number },
+): PaginatedResult<T> {
+  return {
+    content: data,
+    currentPage: meta.page - 1,
+    totalPages: meta.totalPages,
+    totalElements: meta.total,
+    hasNext: meta.page < meta.totalPages,
+    hasPrevious: meta.page > 1,
+  };
 }
 
 export class MaintenanceRequestRepositoryImpl extends MaintenanceRequestRepository {
+
+  // ── Lecturas REST ─────────────────────────────────────────────────────────
+
   async listByStatus(
     status: MaintenanceRequestStatus,
     offset: number,
     limit: number,
   ): Promise<PaginatedResult<MaintenanceRequest>> {
-    const { data } = await apolloClient.query<{
-      getMaintenanceRequestsByStatus: PaginatedResponse;
-    }>({
-      query: GET_BY_STATUS,
-      variables: { status, offset, limit },
-      fetchPolicy: 'network-only',
+    const estado = STATUS_TO_ESTADO[status];
+    const page = Math.floor(offset / limit) + 1;
+    const { data } = await axiosClient.get<SolicitudListResponseDto>('/solicitudes', {
+      params: { estado, page, pageSize: limit },
     });
-    if (!data) throw new Error('Sin datos de solicitudes por estado');
-    const page = data.getMaintenanceRequestsByStatus;
-    return {
-      content: page.content.map(toMaintenanceRequest),
-      currentPage: page.currentPage,
-      totalPages: page.totalPages,
-      totalElements: page.totalElements,
-      hasNext: page.hasNext,
-      hasPrevious: page.hasPrevious,
-    };
+    return toPaginatedResult(data.data.map(toMaintenanceRequestFromList), data.meta);
   }
 
   async listByCreatedBy(
-    createdBy: string,
+    solicitanteId: string,
     offset: number,
     limit: number,
   ): Promise<PaginatedResult<MaintenanceRequest>> {
-    const { data } = await apolloClient.query<{
-      getMaintenanceRequestsByCreatedBy: PaginatedResponse;
-    }>({
-      query: GET_BY_CREATED_BY,
-      variables: { createdBy, offset, limit },
-      fetchPolicy: 'network-only',
+    const page = Math.floor(offset / limit) + 1;
+    const { data } = await axiosClient.get<SolicitudListResponseDto>('/solicitudes', {
+      params: { solicitanteId, page, pageSize: limit },
     });
-    if (!data) throw new Error('Sin datos de solicitudes por creador');
-    const page = data.getMaintenanceRequestsByCreatedBy;
-    return {
-      content: page.content.map(toMaintenanceRequest),
-      currentPage: page.currentPage,
-      totalPages: page.totalPages,
-      totalElements: page.totalElements,
-      hasNext: page.hasNext,
-      hasPrevious: page.hasPrevious,
-    };
+    return toPaginatedResult(data.data.map(toMaintenanceRequestFromList), data.meta);
+  }
+
+  async listByTecnicoId(
+    tecnicoId: string,
+    offset: number,
+    limit: number,
+  ): Promise<PaginatedResult<MaintenanceRequest>> {
+    const page = Math.floor(offset / limit) + 1;
+    const { data } = await axiosClient.get<SolicitudListResponseDto>('/solicitudes', {
+      params: { tecnicoId, page, pageSize: limit },
+    });
+    return toPaginatedResult(data.data.map(toMaintenanceRequestFromList), data.meta);
   }
 
   async getById(id: string): Promise<MaintenanceRequest> {
-    const { data } = await apolloClient.query<{
-      getMaintenanceRequestById: MaintenanceRequestDto;
-    }>({
-      query: GET_BY_ID,
-      variables: { id },
-      fetchPolicy: 'network-only',
-    });
-    if (!data) throw new Error('Sin datos de solicitud');
-    return toMaintenanceRequest(data.getMaintenanceRequestById);
+    const { data } = await axiosClient.get<SolicitudDetailResponseDto>(`/solicitudes/${id}`);
+    return toMaintenanceRequestFromDetail(data.data);
   }
+
+  // ── Escrituras REST ───────────────────────────────────────────────────────
 
   async create(input: CreateMaintenanceRequestInput): Promise<MaintenanceRequest> {
     const restDto: CreateSolicitudRestDto = {
@@ -149,51 +96,69 @@ export class MaintenanceRequestRepositoryImpl extends MaintenanceRequestReposito
       tipo: input.tipo,
       prioridad: input.prioridad,
       descripcion: input.description,
-      canal_origen: 'MOVIL',
+      canal_origen: 'APP_MOVIL',
       metadata: {},
     };
 
-    const [gqlResult] = await Promise.all([
-      apolloClient.mutate<{ createMaintenanceRequest: MaintenanceRequestDto }>({
-        mutation: CREATE_MUTATION,
-        variables: {
-          fixedAssetId: input.fixedAssetId,
-          title: input.title,
-          description: input.description,
-        },
-      }),
-      axiosClient.post('/solicitudes', restDto),
-    ]);
+    console.log('[create] body enviado:', JSON.stringify(restDto, null, 2));
 
-    if (!gqlResult.data?.createMaintenanceRequest) {
-      throw new Error('Error al crear la solicitud');
+    try {
+      const { data } = await axiosClient.post<SolicitudDetailResponseDto>('/solicitudes', restDto);
+      return toMaintenanceRequestFromDetail(data.data);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { status?: number; data?: unknown } };
+        console.log('[create] HTTP', axiosErr.response?.status, JSON.stringify(axiosErr.response?.data, null, 2));
+      }
+      throw err;
     }
-    return toMaintenanceRequest(gqlResult.data.createMaintenanceRequest);
   }
 
   async tomarResponsabilidad(input: TomarResponsabilidadInput): Promise<void> {
-    const restDto: UpdateEstadoRestDto = {
+    const restDto: TomarResponsabilidadRestDto = {
       estado: 'EN_PROCESO',
-      tecnico_id: input.userId,
-      diagnostico: input.description,
+      tecnico_id: input.tecnicoRestId,
     };
 
-    await Promise.all([
-      apolloClient.mutate({
-        mutation: CREATE_MAINTENANCE,
-        variables: {
-          maintenanceRequestId: input.maintenanceRequestId,
-          type: input.type,
-          description: input.description,
-          userId: input.userId,
-          imageUrl: input.imageUrl,
-        },
-      }),
-      apolloClient.mutate({
-        mutation: UPDATE_STATUS,
-        variables: { id: input.maintenanceRequestId, newStatus: 'APPROVED' },
-      }),
-      axiosClient.patch(`/solicitudes/${input.maintenanceRequestId}/estado`, restDto),
-    ]);
+    console.log('[tomarResponsabilidad] body enviado:', JSON.stringify(restDto, null, 2));
+
+    try {
+      await axiosClient.patch(`/solicitudes/${input.maintenanceRequestId}/estado`, restDto);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { status?: number; data?: unknown } };
+        console.log('[tomarResponsabilidad] HTTP', axiosErr.response?.status, JSON.stringify(axiosErr.response?.data, null, 2));
+      }
+      throw err;
+    }
+  }
+
+  async diagnosticar(input: DiagnosticarInput): Promise<void> {
+    const restDto: DiagnosticarRestDto = {
+      estado: 'EN_PROCESO',
+      tecnico_id: input.tecnicoRestId,
+      diagnostico: input.diagnostico,
+    };
+
+    console.log('[diagnosticar] body enviado:', JSON.stringify(restDto, null, 2));
+
+    try {
+      await axiosClient.patch(`/solicitudes/${input.maintenanceRequestId}/estado`, restDto);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { status?: number; data?: unknown } };
+        console.log('[diagnosticar] HTTP', axiosErr.response?.status, JSON.stringify(axiosErr.response?.data, null, 2));
+      }
+      throw err;
+    }
+  }
+
+  async completar(input: CompletarInput): Promise<void> {
+    const restDto: CompletarRestDto = {
+      estado: 'COMPLETADO',
+      solucion: input.solucion,
+      ...(input.costo !== undefined && { costo: input.costo }),
+    };
+    await axiosClient.patch(`/solicitudes/${input.maintenanceRequestId}/estado`, restDto);
   }
 }

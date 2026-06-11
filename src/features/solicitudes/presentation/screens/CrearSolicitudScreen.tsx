@@ -14,6 +14,7 @@ import { fetchAreaOptions } from '../../../catalogs/data/repositories/area-optio
 import { FixedAssetOption, AreaOption } from '../../../catalogs/domain/models/catalog.model';
 import AppTextInput from '../../../../shared/ui/AppTextInput';
 import AppPicker from '../../../../shared/ui/AppPicker';
+import AppSearchableSelect from '../../../../shared/ui/AppSearchableSelect';
 import AppButton from '../../../../shared/ui/AppButton';
 import ErrorMessage from '../../../../shared/ui/ErrorMessage';
 import { colors } from '../../../../shared/ui/theme';
@@ -21,7 +22,6 @@ import { MaintenanceTipo, MaintenancePrioridad } from '../../domain/models/maint
 
 interface FormValues {
   fixedAssetId: string;
-  title: string;
   description: string;
   tipo: MaintenanceTipo;
   prioridad: MaintenancePrioridad;
@@ -34,6 +34,7 @@ const TIPO_OPTIONS = [
 ] as const;
 
 const PRIORIDAD_OPTIONS = [
+  { label: 'Crítica', value: 'CRITICA' },
   { label: 'Alta', value: 'ALTA' },
   { label: 'Media', value: 'MEDIA' },
   { label: 'Baja', value: 'BAJA' },
@@ -51,7 +52,6 @@ export default function CrearSolicitudScreen() {
   const { control, handleSubmit, formState: { errors }, reset } = useForm<FormValues>({
     defaultValues: {
       fixedAssetId: '',
-      title: '',
       description: '',
       tipo: 'CORRECTIVO',
       prioridad: 'ALTA',
@@ -80,12 +80,11 @@ export default function CrearSolicitudScreen() {
     try {
       await createRequest({
         fixedAssetId: values.fixedAssetId,
-        title: values.title,
         description: values.description,
         tipo: values.tipo,
         prioridad: values.prioridad,
         areaId: values.areaId,
-        solicitanteId: session.userId,
+        solicitanteId: session.restUserId ?? session.userId,
       });
       reset();
       Alert.alert('Éxito', 'Solicitud creada correctamente');
@@ -106,10 +105,10 @@ export default function CrearSolicitudScreen() {
     return <ErrorMessage message={catalogError} onRetry={loadCatalogs} />;
   }
 
-  const assetOptions = [
-    { label: '— Seleccionar activo —', value: '' },
-    ...assets.map((a) => ({ label: `${a.name} (${a.category})`, value: a.id })),
-  ];
+  const assetSelectOptions = assets.map((a) => ({
+    id: a.id,
+    label: `${a.codigo} — ${a.name}`,
+  }));
 
   const areaOptions = [
     { label: '— Seleccionar área —', value: 0 },
@@ -117,38 +116,25 @@ export default function CrearSolicitudScreen() {
   ];
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Nueva solicitud</Text>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.heading}>Nueva Solicitud de Mantenimiento</Text>
 
       <Controller
         control={control}
         name="fixedAssetId"
         rules={{ validate: (v) => v !== '' || 'Selecciona un activo' }}
         render={({ field: { onChange, value } }) => (
-          <AppPicker
+          <AppSearchableSelect
             label="Activo fijo *"
-            options={assetOptions}
-            selectedValue={value}
-            onValueChange={(v) => onChange(String(v))}
-            error={errors.fixedAssetId?.message}
-          />
-        )}
-      />
-
-      <Controller
-        control={control}
-        name="title"
-        rules={{
-          required: 'El título es obligatorio',
-          minLength: { value: 5, message: 'Mínimo 5 caracteres' },
-        }}
-        render={({ field: { onChange, value } }) => (
-          <AppTextInput
-            label="Título *"
-            placeholder="Título de la solicitud"
+            options={assetSelectOptions}
             value={value}
-            onChangeText={onChange}
-            error={errors.title?.message}
+            onSelect={(id) => onChange(id)}
+            placeholder="Buscar por código o nombre..."
+            error={errors.fixedAssetId?.message}
           />
         )}
       />
@@ -247,10 +233,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heading: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.ink,
     marginBottom: 20,
+    textAlign: 'center',
   },
   textarea: {
     textAlignVertical: 'top',

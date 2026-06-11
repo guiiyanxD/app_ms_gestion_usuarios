@@ -7,4 +7,5 @@ export interface Session {
   readonly lastName: string;
   readonly email: string;
   readonly role: UserRole;
+  readonly restUserId: string | null;
 }

@@ -10,6 +10,7 @@ export type SolicitudesStackParams = {
 export type AppTabsParams = {
   SolicitudesTab: undefined;
   NuevaSolicitudTab: undefined;
+  MisSolicitudesTab: undefined;
   BusquedaTab: undefined;
   PerfilTab: undefined;
 };
