@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -303,7 +305,10 @@ export default function SolicitudDetailScreen({ route, navigation }: Props) {
         transparent
         onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Diagnóstico</Text>
 
@@ -334,7 +339,7 @@ export default function SolicitudDetailScreen({ route, navigation }: Props) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Completar */}
@@ -344,7 +349,10 @@ export default function SolicitudDetailScreen({ route, navigation }: Props) {
         transparent
         onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Completar mantenimiento</Text>
 
@@ -384,7 +392,7 @@ export default function SolicitudDetailScreen({ route, navigation }: Props) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
